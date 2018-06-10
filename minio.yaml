@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+  namespace: buildit-jenkins
+spec:
+  ports:
+  - name: ui
+    protocol: TCP
+    port: 80
+    targetPort: 9000
+  selector:
+    app: minio
+  clusterIP: None
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: minio-pvc-data
+  namespace: buildit-jenkins
+spec:
+  storageClassName: fast
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: minio-pvc-config
+  namespace: buildit-jenkins
+spec:
+  storageClassName: fast
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio
+  namespace: buildit-jenkins
+spec:
+  selector:
+    matchLabels:
+      app: minio
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: minio
+    spec:
+      containers:
+      - image: minio/minio
+        name: minio
+        args: ["server", "/data"]
+        ports:
+        - containerPort: 9000
+          name: http
+        volumeMounts:
+        - name: minio-data
+          mountPath: /data
+        - name: minio-config
+          mountPath: /config
+      volumes:
+      - name: minio-data
+        persistentVolumeClaim:
+          claimName: minio-pvc-data
+      - name: minio-config
+        persistentVolumeClaim:
+          claimName: minio-pvc-config
